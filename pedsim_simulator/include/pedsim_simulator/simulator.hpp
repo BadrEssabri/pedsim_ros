@@ -32,6 +32,7 @@
 #define SIMULATOR_H
 
 #include "rclcpp/rclcpp.hpp"
+#include <cmath>
 
 #include "tf2_msgs/msg/tf_message.hpp"
 #include "tf2_ros/buffer.h"
@@ -49,6 +50,10 @@
 #include <pedsim_msgs/msg/agent_states.hpp>
 #include <pedsim_msgs/msg/line_obstacle.hpp>
 #include <pedsim_msgs/msg/line_obstacles.hpp>
+
+#include <hunav_msgs/msg/agent_behavior.hpp>
+#include <hunav_msgs/msg/agent.hpp>
+#include <hunav_msgs/msg/agents.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -145,6 +150,7 @@ private:
   double robot_radius;
   double agent_radius;
   double forceSocial;
+  string arrived_human;
 };
 
 #endif

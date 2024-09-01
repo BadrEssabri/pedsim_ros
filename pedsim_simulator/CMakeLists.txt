@@ -18,6 +18,7 @@ set(PEDSIM_SIMULATOR_DEPENDENCIES
   tf2
   tf2_ros
   tf2_geometry_msgs
+  hunav_msgs
   Qt5Widgets
 	Qt5Core
 	Boost
@@ -44,6 +45,8 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Core REQUIRED)
+find_package(hunav_msgs REQUIRED)
+
 
 include_directories(include)
 include_directories(${Eigen_INCLUDE_DIRS})

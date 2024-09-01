@@ -62,6 +62,9 @@ void Simulator::initializeParams() {
   this->declare_parameter("robot_radius", 0.35);
   this->declare_parameter("agent_radius", 0.35);
   this->declare_parameter("force_social", 10.0);
+  // Soartoros, arrived human
+  this->declare_parameter("human_arrived", "false");
+
 
   odom_frame_id =this->get_parameter("odom_frame_id").as_string();
   base_frame_id =this->get_parameter("base_frame_id").as_string();
@@ -75,12 +78,16 @@ void Simulator::initializeParams() {
   robot_radius = this->get_parameter("robot_radius").as_double();
   agent_radius = this->get_parameter("agent_radius").as_double();
   forceSocial = this->get_parameter("force_social").as_double();
+  arrived_human = this->get_parameter("human_arrived").as_string();
+
 }
+
 
 bool Simulator::initializeSimulation() {
   std::string scene_file_param;
   paused_ = false;
   robot_ = nullptr;
+
 
   this->declare_parameter("scene_file", "");
   scene_file_param = this->get_parameter("scene_file").as_string();
@@ -270,6 +277,9 @@ void Simulator::publishAgents() {
     return;
   }
 
+  // Check if followed human has arrived
+  arrived_human = this->get_parameter("human_arrived").as_string();
+
   AgentStates all_status;
   all_status.header = createMsgHeader();
 
@@ -281,7 +291,55 @@ void Simulator::publishAgents() {
     return gv;
   };
 
+  // Define agent data for hunavsim evaluator
+  hunav_msgs::msg::Agents agents_eval;
+  hunav_msgs::msg::Agent robot_eval;
+  agents_eval.header = createMsgHeader();
+
   for (const Agent *a : SCENE.getAgents()) {
+    hunav_msgs::msg::Agent agent_eval;
+    hunav_msgs::msg::AgentBehavior agent_behav_eval;
+
+    // agent_eval.id = a->getId();
+    // agent_eval.type = 1;
+    // agent_eval.skin = 0;
+    // agent_eval.name = "agent" + a->getId().toString();
+    // agent_eval.group_id = 0;
+    // agent_eval.pose.position.x = a->getx();
+    // agent_eval.pose.position.y = a->gety();
+    // agent_eval.pose.position.z = a->getz();
+    // auto theta = std::atan2(a->getvy(), a->getvx());
+    // agent_eval.pose.orientation = pedsim::angleToQuaternion(theta);
+    // agent_eval.yaw = theta;
+    // agent_eval.twist.linear.x = a->getvx();
+    // agent_eval.twist.linear.y = a->getvy();
+    // agent_eval.twist.linear.z = a->getvz();
+    // agent_eval.desired_velocity = 0.3;
+    // agent_eval.radius = 0.2;
+    // agent_eval.linear_vel = std:pow((std:pow(a->getvx(), 2) + std:pow(a->getvy(), 2)), 0.5);
+    // agent_eval.angular_vel = 0.0;
+
+    // agent_behav_eval.type = 1;
+    // agent_behav_eval.state = 0 or 1;
+    // agent_behav_eval.configuration = 0;
+    // float32 duration
+    // bool once
+    // float32 vel
+    // float32 dist
+    // float32 social_force_factor
+    // float32 goal_force_factor
+    // float32 obstacle_force_factor
+    // float32 other_force_factor
+
+    // agent_eval.behavior = agent_behav_eval;
+
+    // geometry_msgs/Pose[] goals
+    // agent_eval.cyclic_goals = true;
+    // agent_eval.goal_radius
+
+    // geometry_msgs/Point[] closest_obs
+
+    // pedsim agent state
     AgentState state;
     state.header = createMsgHeader();
 
@@ -293,24 +351,39 @@ void Simulator::publishAgents() {
     auto theta = std::atan2(a->getvy(), a->getvx());
     state.pose.orientation = pedsim::angleToQuaternion(theta);
 
-    state.twist.linear.x = a->getvx();
-    state.twist.linear.y = a->getvy();
-    state.twist.linear.z = a->getvz();
 
+    // State machine behaviour
     AgentStateMachine::AgentState sc = a->getStateMachine()->getCurrentState();
     state.social_state = agentStateToActivity(sc);
     if (a->getType() == Ped::Tagent::ELDER) {
       state.social_state = AgentState::TYPE_STANDING;
     }
 
-    // Skip robot.
-    if (a->getType() == Ped::Tagent::ROBOT) {
-      continue;
-    }
-
     // Forces.
     AgentForce agent_forces;
-    agent_forces.desired_force = VecToMsg(a->getDesiredDirection());
+
+    if (arrived_human == "true" && state.id == 0)
+    {
+      state.twist.linear.x = 0.0;
+      state.twist.linear.y = 0.0;
+      state.twist.linear.z = 0.0;
+
+      geometry_msgs::msg::Vector3 g;
+      g.x = 0.0;
+      g.y = 0.0;
+      g.z = 0.0;
+      agent_forces.desired_force = g;
+    }
+    else {
+      state.twist.linear.x = a->getvx();
+      state.twist.linear.y = a->getvy();
+      state.twist.linear.z = a->getvz();
+
+      agent_forces.desired_force = VecToMsg(a->getDesiredDirection());
+    }
+
+
+    // Forces.
     agent_forces.obstacle_force = VecToMsg(a->getObstacleForce());
     agent_forces.social_force = VecToMsg(a->getSocialForce());
     // agent_forces.group_coherence_force = a->getSocialForce();
@@ -320,7 +393,15 @@ void Simulator::publishAgents() {
 
     state.forces = agent_forces;
 
+    // Skip robot.
+    if (a->getType() == Ped::Tagent::ROBOT) {
+      robot_eval = agent_eval;
+      continue;
+    }
+
     all_status.agent_states.push_back(state);
+    // agents_eval.agents.push_back(agent_eval);
+
   }
 
   pub_agent_states_->publish(all_status);
