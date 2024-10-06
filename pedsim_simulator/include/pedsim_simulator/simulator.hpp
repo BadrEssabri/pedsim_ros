@@ -121,6 +121,10 @@ private:
   rclcpp::Publisher<AgentGroups>::SharedPtr pub_agent_groups_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_robot_position_;
 
+  rclcpp::Publisher<hunav_msgs::msg::Agents>::SharedPtr pub_human_states_;
+  rclcpp::Publisher<hunav_msgs::msg::Agent>::SharedPtr pub_robot_state_;
+
+
   // provided services
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr srv_pause_simulation_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr srv_unpause_simulation_;

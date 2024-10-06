@@ -129,6 +129,12 @@ bool Simulator::initializeSimulation() {
   pub_robot_position_ = create_publisher<nav_msgs::msg::Odometry>(
       "pedsim_simulator/robot_position", queue_size);
 
+  // ros2 pub for hunav_eval
+  pub_human_states_ = create_publisher<hunav_msgs::msg::Agents>(
+      "/human_states", queue_size);
+  pub_robot_state_ = create_publisher<hunav_msgs::msg::Agent>(
+      "/robot_states", queue_size);
+
   // services
   srv_pause_simulation_ = create_service<std_srvs::srv::Empty>(
       "pedsim_simulator/pause_simulation",
@@ -300,44 +306,53 @@ void Simulator::publishAgents() {
     hunav_msgs::msg::Agent agent_eval;
     hunav_msgs::msg::AgentBehavior agent_behav_eval;
 
-    // agent_eval.id = a->getId();
-    // agent_eval.type = 1;
-    // agent_eval.skin = 0;
-    // agent_eval.name = "agent" + a->getId().toString();
-    // agent_eval.group_id = 0;
-    // agent_eval.pose.position.x = a->getx();
-    // agent_eval.pose.position.y = a->gety();
-    // agent_eval.pose.position.z = a->getz();
-    // auto theta = std::atan2(a->getvy(), a->getvx());
-    // agent_eval.pose.orientation = pedsim::angleToQuaternion(theta);
-    // agent_eval.yaw = theta;
-    // agent_eval.twist.linear.x = a->getvx();
-    // agent_eval.twist.linear.y = a->getvy();
-    // agent_eval.twist.linear.z = a->getvz();
-    // agent_eval.desired_velocity = 0.3;
-    // agent_eval.radius = 0.2;
-    // agent_eval.linear_vel = std:pow((std:pow(a->getvx(), 2) + std:pow(a->getvy(), 2)), 0.5);
-    // agent_eval.angular_vel = 0.0;
+    agent_eval.id = a->getId();
+    agent_eval.type = 1;
+    agent_eval.skin = 0;
+    agent_eval.name = "agent" + std::to_string(a->getId());
+    agent_eval.group_id = -1;
+    agent_eval.position.position.x = a->getx();
+    agent_eval.position.position.y = a->gety();
+    agent_eval.position.position.z = a->getz();
+    auto theta = std::atan2(a->getvy(), a->getvx());
+    agent_eval.position.orientation = pedsim::angleToQuaternion(theta);
+    agent_eval.yaw = theta;
+    agent_eval.velocity.linear.x = a->getvx();
+    agent_eval.velocity.linear.y = a->getvy();
+    agent_eval.velocity.linear.z = a->getvz();
+    agent_eval.desired_velocity = 0.3;
+    agent_eval.radius = 0.2;
+    agent_eval.linear_vel = std::pow((std::pow(a->getvx(), 2) + std::pow(a->getvy(), 2)), 0.5);
+    agent_eval.angular_vel = 0.0;
 
-    // agent_behav_eval.type = 1;
-    // agent_behav_eval.state = 0 or 1;
-    // agent_behav_eval.configuration = 0;
-    // float32 duration
-    // bool once
-    // float32 vel
-    // float32 dist
-    // float32 social_force_factor
-    // float32 goal_force_factor
-    // float32 obstacle_force_factor
-    // float32 other_force_factor
+    agent_behav_eval.type = 1;
+    agent_behav_eval.state = 1;
+    agent_behav_eval.configuration = 0;
+    agent_behav_eval.duration = 40.0;
+    agent_behav_eval.once = true;
+    agent_behav_eval.vel = 0.0;
+    agent_behav_eval.dist = 0.0;
+    agent_behav_eval.social_force_factor = 0.0;
+    agent_behav_eval.goal_force_factor = 0.0;
+    agent_behav_eval.obstacle_force_factor = 0.0;
+    agent_behav_eval.other_force_factor = 0.0;
 
-    // agent_eval.behavior = agent_behav_eval;
+    agent_eval.behavior = agent_behav_eval;
 
-    // geometry_msgs/Pose[] goals
-    // agent_eval.cyclic_goals = true;
-    // agent_eval.goal_radius
+    // geometry_msgs/Pose[] goals, uninit
+    agent_eval.cyclic_goals = true;
+    agent_eval.goal_radius = 0.2;
 
-    // geometry_msgs/Point[] closest_obs
+    Ped::Tvector v = a->getObstacleForce();
+
+    geometry_msgs::msg::Point obstacleforce;
+    obstacleforce.x = v.x;
+    obstacleforce.y = v.y;
+    obstacleforce.z = v.z;
+    agent_eval.closest_obs.push_back(obstacleforce);
+
+    // Could reorder function that works with this in metrics, by directly publishing the obstacle force
+    // TODO: make sure the start of the recording is synced to work with this method
 
     // pedsim agent state
     AgentState state;
@@ -348,9 +363,10 @@ void Simulator::publishAgents() {
     state.pose.position.x = a->getx();
     state.pose.position.y = a->gety();
     state.pose.position.z = a->getz();
-    auto theta = std::atan2(a->getvy(), a->getvx());
     state.pose.orientation = pedsim::angleToQuaternion(theta);
-
+    state.twist.linear.x = a->getvx();
+    state.twist.linear.y = a->getvy();
+    state.twist.linear.z = a->getvz();
 
     // State machine behaviour
     AgentStateMachine::AgentState sc = a->getStateMachine()->getCurrentState();
@@ -361,29 +377,7 @@ void Simulator::publishAgents() {
 
     // Forces.
     AgentForce agent_forces;
-
-    if (arrived_human == "true" && state.id == 0)
-    {
-      state.twist.linear.x = 0.0;
-      state.twist.linear.y = 0.0;
-      state.twist.linear.z = 0.0;
-
-      geometry_msgs::msg::Vector3 g;
-      g.x = 0.0;
-      g.y = 0.0;
-      g.z = 0.0;
-      agent_forces.desired_force = g;
-    }
-    else {
-      state.twist.linear.x = a->getvx();
-      state.twist.linear.y = a->getvy();
-      state.twist.linear.z = a->getvz();
-
-      agent_forces.desired_force = VecToMsg(a->getDesiredDirection());
-    }
-
-
-    // Forces.
+    agent_forces.desired_force = VecToMsg(a->getDesiredDirection());
     agent_forces.obstacle_force = VecToMsg(a->getObstacleForce());
     agent_forces.social_force = VecToMsg(a->getSocialForce());
     // agent_forces.group_coherence_force = a->getSocialForce();
@@ -398,13 +392,17 @@ void Simulator::publishAgents() {
       robot_eval = agent_eval;
       continue;
     }
+    else {
+      agents_eval.agents.push_back(agent_eval);
+    }
 
     all_status.agent_states.push_back(state);
-    // agents_eval.agents.push_back(agent_eval);
 
   }
 
   pub_agent_states_->publish(all_status);
+  pub_robot_state_->publish(robot_eval);
+  pub_human_states_->publish(agents_eval);
 }
 
 void Simulator::publishGroups() {
