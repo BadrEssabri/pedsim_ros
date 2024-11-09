@@ -4,6 +4,13 @@
 ROS packages for a 2D pedestrian simulator based on social force
 model of [Helbing et. al](http://arxiv.org/pdf/cond-mat/9805244.pdf). The implementation is based on an extended version of Christian Gloor's [libpedsim](http://pedsim.silmaril.org/) library which has been extended to include additional behaviors and activities. This packages is useful for robot navigation experiments with crowded scenes which are hard to acquire in practice.
 
+### Utilization in SocialNavigationSoar
+This repository was forked from [ros2 pedsim_ros](https://github.com/stephenadhi/pedsim_ros). There are some changes to the original repo that have been made to be compatible with [SocialNavigationSoar](https://github.com/BadrEssabri/SocialNavigationSoar.git). Such as:
+
+1. Agent information is being published to /robot_state and /human_states to be evaluated using social navigation metrics from [hunavsim](https://github.com/BadrEssabri/hunavsim.git)
+2. The waiting time for queueing has been increased to 10 seconds.
+3. The walking speed of humans has been decreased to about 0.3 m/s.
+
 ### Features
 - Individual walking using social force model for very large crowds in real time
 - Group walking using the extended social force model
