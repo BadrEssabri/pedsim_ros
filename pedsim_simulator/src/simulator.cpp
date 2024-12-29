@@ -236,8 +236,10 @@ void Simulator::updateRobotPositionFromTF() {
     const double y = tfTransform.getOrigin().y();
     const double dx = x - last_robot_pose_.transform.translation.x,
                  dy = y - last_robot_pose_.transform.translation.y;
-    const double dt =
-        tf_msg.header.stamp.sec - last_robot_pose_.header.stamp.sec;
+    // const double dt = tf_msg.header.stamp.sec - last_robot_pose_.header.stamp.sec;
+    const double dt = (tf_msg.header.stamp.sec + (tf_msg.header.stamp.nanosec * 1e-9)) 
+                - (last_robot_pose_.header.stamp.sec + (last_robot_pose_.header.stamp.nanosec * 1e-9));
+
     double vx = dx / dt, vy = dy / dt;
 
     if (!std::isfinite(vx))
